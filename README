@@ -1,0 +1,403 @@
+			Project 1-- CDA 3101 Worth: 10 points
+
+1. Purpose
+
+This project is intended to help you understand the instructions of a very
+simple assembly language and how to assemble programs into machine language.
+
+2. Problem
+
+Write a program to take an LC3101 assembly-language program and produce the
+corresponding machine language.
+
+3. LC-3101 Instruction-Set Architecture
+
+For the first several projects, you will be gradually "building" the LC-3101
+(Little Computer, CDA 3101). The LC-3101 is very simple, but it is general
+enough to solve complex problems. For this project, you will only need to know
+the instruction set and instruction format of the LC-3101.
+
+The LC-3101 is an 8-register, 32-bit computer.  All addresses are
+word-addresses.  The LC-3101 has 65536 words of memory.  By assembly-language
+convention, register 0 will always contain 0 (i.e. the machine will not enforce
+this, but no assembly-language program should ever change register 0 from its
+initial value of 0).
+
+There are 4 instruction formats (bit 0 is the least-significant bit).  Bits
+31-25 are unused for all instructions, and should always be 0.
+
+R-type instructions (add, nand):
+    bits 24-22: opcode
+    bits 21-19: reg A
+    bits 18-16: reg B
+    bits 15-3:  unused (should all be 0)
+    bits 2-0:   destReg
+
+I-type instructions (lw, sw, beq):
+    bits 24-22: opcode
+    bits 21-19: reg A
+    bits 18-16: reg B
+    bits 15-0:  offsetField (an 16-bit, 2's complement number with a range of
+		    -32768 to 32767)
+
+J-type instructions (jalr):
+    bits 24-22: opcode
+    bits 21-19: reg A
+    bits 18-16: reg B
+    bits 15-0:  unused (should all be 0)
+
+O-type instructions (halt, noop):
+    bits 24-22: opcode
+    bits 21-0:  unused (should all be 0)
+
+-------------------------------------------------------------------------------
+Table 1: Description of Machine Instructions
+-------------------------------------------------------------------------------
+Assembly language 	Opcode in binary		Action
+name for instruction	(bits 24, 23, 22)
+-------------------------------------------------------------------------------
+add (R-type format)	000 			add contents of regA with
+						contents of regB, store
+						results in destReg.
+
+nand (R-type format)	001			nand contents of regA with
+						contents of regB, store
+						results in destReg.
+
+lw (I-type format)	010			load regB from memory. Memory
+						address is formed by adding
+						offsetField with the contents of
+						regA.
+
+sw (I-type format)	011			store regB into memory. Memory
+						address is formed by adding
+						offsetField with the contents of
+						regA.
+
+beq (I-type format)	100			if the contents of regA and
+						regB are the same, then branch
+						to the address PC+1+offsetField,
+						where PC is the address of the
+						beq instruction.
+
+jalr (J-type format)	101			First store PC+1 into regB,
+						where PC is the address of the
+						jalr instruction.  Then branch
+						to the address now contained in
+						regA.  Note that this implies
+						if regA is the same as regB,
+						the processor will first store
+						PC+1 into that register, then
+						end up branching to PC+1.
+
+halt (O-type format)	110			increment the PC (as with all
+						instructions), then halt the
+						machine (let the simulator
+						notice that the machine
+						halted).
+
+noop (O-type format)	111			do nothing, but do it correctly
+-------------------------------------------------------------------------------
+
+4. LC-3101 Assembly Language and Assembler
+
+In this project, you need to  write a program (C, C++, ask your TA) to take an
+assembly-language program and translate it into machine language. You will
+translate assembly-language names for instructions, such as beq, into their
+numeric equivalent (e.g. 100), and you will translate symbolic names for
+addresses into numeric values. The final output will be a series of 32-bit
+instructions (instruction bits 31-25 are always 0) and data values.
+
+The format for a line of assembly code is (<white> means a series of tabs
+and/or spaces):
+
+label<white>instruction<white>field0<white>field1<white>field2<white>comments
+
+The leftmost field on a line is the label field.  Valid labels contain a
+maximum of 6 characters and can consist of letters and numbers (but must start
+with a letter). The label is optional (the white space following the label
+field is required).  Labels make it much easier to write assembly-language
+programs, since otherwise you would need to modify all address fields each time
+you added a line to your assembly-language program!
+
+After the optional label is white space.  Then follows the instruction field,
+where the instruction can be any of the assembly-language instruction names
+listed in the above table.  After more white space comes a series of fields.
+All fields are given as decimal numbers or labels.  The number of fields
+depends on the instruction, and unused fields should be ignored (treat them
+like comments).
+
+    R-type instructions (add, nand) instructions require 3 fields: field0
+    is regA, field1 is regB, and field2 is destReg.
+
+    I-type instructions (lw, sw, beq) require 3 fields: field0 is regA, field1
+    is regB, and field2 is either a numeric value for offsetField or a symbolic
+    address.  Numeric offsetFields can be positive or negative; symbolic
+    addresses are discussed below.
+
+    J-type instructions (jalr) require 2 fields: field0 is regA, and field1 is
+    regB.
+
+    O-type instructions (noop and halt) require no fields.
+
+Symbolic addresses refer to labels.  For lw or sw instructions, the assembler
+should compute offsetField to be equal to the address of the label.  This could
+be used with a zero base register to refer to the label, or could be used with
+a non-zero base register to index into an array starting at the label.  For beq
+instructions, the assembler should translate the label into the numeric
+offsetField needed to branch to that label.
+
+After the last used field comes more white space, then any comments.  The
+comment field ends at the end of a line.  Comments are vital to creating
+understandable assembly-language programs, because the instructions themselves
+are rather cryptic.
+
+In addition to LC-3101 instructions, an assembly-language program may contain
+directions for the assembler. The only assembler directive we will use is .fill
+(note the leading period). .fill tells the assembler to put a number into the
+place where the instruction would normally be stored. .fill instructions use
+one field, which can be either a numeric value or a symbolic address.  For
+example, ".fill 32" puts the value 32 where the instruction would normally be
+stored.  .fill with a symbolic address will store the address of the label.
+In the example below, ".fill start" will store the value 2, because the label
+"start" is at address 2.
+
+The assembler should make two passes over the assembly-language program. In the
+first pass, it will calculate the address for every symbolic label.  Assume
+that the first instruction is at address 0.  In the second pass, it will
+generate a machine-language instruction (in decimal) for each line of assembly
+language.  For example, here is an assembly-language program (that counts down
+from 5, stopping when it hits 0).
+
+	lw	0	1	five	load reg1 with 5 (uses symbolic address)
+	lw	1	2	3	load reg2 with -1 (uses numeric address)
+start	add	1	2	1	decrement reg1
+	beq	0	1	2	goto end of program when reg1==0
+	beq	0	0	start	go back to the beginning of the loop
+	noop
+done	halt				end of program
+five	.fill	5
+neg1	.fill	-1
+stAddr	.fill	start			will contain the address of start (2)
+
+Here is the symbol table generated at the end of pass one (note that the symbol
+table will not be written to the file - unless you do it for debugging purposes)
+
+start   2
+done    6
+five    7
+neg1    8
+stAddr  9
+
+And here is the corresponding machine language:
+
+(address 0): 8454151 (hex 0x810007)
+(address 1): 9043971 (hex 0x8a0003)
+(address 2): 655361 (hex 0xa0001)
+(address 3): 16842754 (hex 0x1010002)
+(address 4): 16842749 (hex 0x100fffd)
+(address 5): 29360128 (hex 0x1c00000)
+(address 6): 25165824 (hex 0x1800000)
+(address 7): 5 (hex 0x5)
+(address 8): -1 (hex 0xffffffff)
+(address 9): 2 (hex 0x2)
+
+Be sure you understand how the above assembly-language program got translated
+to machine language.
+
+Since your programs will always start at address 0, your program should only
+output the contents, not the addresses.
+
+8454151
+9043971
+655361
+16842754
+16842749
+29360128
+25165824
+5
+-1
+2
+
+4.1. Running Your Assembler
+
+Write your program to take two command-line arguments.  The first argument is
+the file name where the assembly-language program is stored, and the second
+argument is the file name where the output (the machine-code) is written.
+For example, with a program name of "assemble", an assembly-language program
+in "program.as", the following would generate a machine-code file "program.mc":
+    
+    assemble program.as program.mc
+
+Note that the format for running the command must use command-line arguments
+for the file names (rather than standard input and standard output).  Your
+program should store only the list of decimal numbers in the machine-code
+file, one instruction per line.  Any other output that you want the program
+to generate (e.g. debugging output) can be printed to standard output.
+
+4.2. Error Checking
+
+Your assembler should catch the following errors in the assembly-language
+program: use of undefined labels, duplicate labels, offsetFields that don't fit
+in 16 bits, and unrecognized opcodes.  Your assembler should exit(1) if it
+detects an error and exit(0) if it finishes without detecting any errors.  Your
+assembler should NOT catch simulation-time errors, i.e. errors that would occur
+at the time the assembly-language program executes (e.g. branching to address
+-1, infinite loops, etc.).
+
+4.4. Assembler Hints
+
+Since offsetField is a 2's complement number, it can only store numbers ranging
+from -32768 to 32767.  For symbolic addresses, your assembler will compute
+offsetField so that the instruction refers to the correct label.
+
+Remember that offsetField is only an 16-bit 2's complement number.  Since 
+integers are 32 bits or more on the system you are writing code on, you'll have
+to chop off all but the lowest 16 bits for negative values of offsetField.
+
+5. Grading, Auto-Grading, and Formatting
+
+We will grade primarily on functionality, including error handling, correctly
+assembling and simulating all instructions, input and output format, method of
+executing your program, correctly multiplying, and comprehensiveness of the
+test suites.
+
+The best way to debug your program is to generate your own test cases, figure
+out the correct answers, and compare your program's output to the correct
+answers.  This is also one of the best ways to learn the concepts in the project.
+
+6. Turning in the Project
+
+Use canvas program to submit your source code (single) file for the assembler.
+You source file should contain your name in the first line of comments, followed
+by the language and environment used to test it.  You are responsible for making
+sure that your program executes correctly on the system the TA will use to test
+your code.  This will likely be one of the departmental Unix program servers, but
+if you work out a different arrangement with a TA (like using python) then be
+clear on the system requirements.
+
+7. Code Fragment for Assembler
+
+The focus of this class is machine organization, not programming skills.  To
+"build" your computer, however, you will be doing a lot of programming.  To
+help you, here is a fragment of the C program for the assembler.  This shows
+how to specify command-line arguments to the program (via argc and argv), how
+to parse the assembly-language file, etc..  This fragment is provided strictly
+to help you, though it may take a bit for you to understand and use the file.
+You may also choose to not use this fragment.
+
+/* Assembler code fragment for LC-3101 */
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define MAXLINELENGTH 1000
+
+int readAndParse(FILE *, char *, char *, char *, char *, char *);
+int isNumber(char *);
+
+int
+main(int argc, char *argv[])
+{
+    char *inFileString, *outFileString;
+    FILE *inFilePtr, *outFilePtr;
+    char label[MAXLINELENGTH], opcode[MAXLINELENGTH], arg0[MAXLINELENGTH],
+            arg1[MAXLINELENGTH], arg2[MAXLINELENGTH];
+
+    if (argc != 3) {
+        printf("error: usage: %s <assembly-code-file> <machine-code-file>\n",
+            argv[0]);
+        exit(1);
+    }
+
+    inFileString = argv[1];
+    outFileString = argv[2];
+
+    inFilePtr = fopen(inFileString, "r");
+    if (inFilePtr == NULL) {
+        printf("error in opening %s\n", inFileString);
+        exit(1);
+    }
+    outFilePtr = fopen(outFileString, "w");
+    if (outFilePtr == NULL) {
+        printf("error in opening %s\n", outFileString);
+        exit(1);
+    }
+
+    /* here is an example for how to use readAndParse to read a line from
+        inFilePtr */
+    if (! readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2) ) {
+        /* reached end of file */
+    }
+
+    /* this is how to rewind the file ptr so that you start reading from the
+        beginning of the file */
+    rewind(inFilePtr);
+
+    /* after doing a readAndParse, you may want to do the following to test the
+        opcode */
+    if (!strcmp(opcode, "add")) {
+        /* do whatever you need to do for opcode "add" */
+    }
+
+    return(0);
+}
+
+/*
+ * Read and parse a line of the assembly-language file.  Fields are returned
+ * in label, opcode, arg0, arg1, arg2 (these strings must have memory already
+ * allocated to them).
+ *
+ * Return values:
+ *     0 if reached end of file
+ *     1 if all went well
+ *
+ * exit(1) if line is too long.
+ */
+int
+readAndParse(FILE *inFilePtr, char *label, char *opcode, char *arg0,
+    char *arg1, char *arg2)
+{
+    char line[MAXLINELENGTH];
+    char *ptr = line;
+
+    /* delete prior values */
+    label[0] = opcode[0] = arg0[0] = arg1[0] = arg2[0] = '\0';
+
+    /* read the line from the assembly-language file */
+    if (fgets(line, MAXLINELENGTH, inFilePtr) == NULL) {
+	/* reached end of file */
+        return(0);
+    }
+
+    /* check for line too long (by looking for a \n) */
+    if (strchr(line, '\n') == NULL) {
+        /* line too long */
+	printf("error: line too long\n");
+	exit(1);
+    }
+
+    /* is there a label? */
+    ptr = line;
+    if (sscanf(ptr, "%[^\t\n ]", label)) {
+	/* successfully read label; advance pointer over the label */
+        ptr += strlen(label);
+    }
+
+    /*
+     * Parse the rest of the line.  Would be nice to have real regular
+     * expressions, but scanf will suffice.
+     */
+    sscanf(ptr, "%*[\t\n ]%[^\t\n ]%*[\t\n ]%[^\t\n ]%*[\t\n ]%[^\t\n ]%*[\t\n ]%[^\t\n ]",
+        opcode, arg0, arg1, arg2);
+    return(1);
+}
+
+int
+isNumber(char *string)
+{
+    /* return 1 if string is a number */
+    int i;
+    return( (sscanf(string, "%d", &i)) == 1);
+}
