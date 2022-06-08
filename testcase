@@ -1,0 +1,22 @@
+lw 0 1 start // Store 6 in register 1
+lw 0 2 end // Store 12 in register 2
+lw 0 3 step // Store 1 in register 3
+lw 0 4 zero // Store 0 in register 4 (total)
+loop_start beq 1 2 loop_end // Start of loop, jump to end of loop if register 1 and 2 contain the same value
+lw 0 5 test_func_addr
+jalr 5 6 // Jump to test_func
+add 1 4 4 // Add contents of registers 1 and 4, and put the result in 4
+add 1 3 1 // Add step (1) to register 1
+beq 0 0 loop_start // Jump to start of loop
+loop_end noop // End of loop, register 4 should now contain 63 (6+7+8+9+10+11+12)
+lw 0 5 val // Store 40 in register 5
+nand 4 5 6 // Nand registers 0 and 2 (63 and 40), put result in register 6 - should be 23
+halt
+test_func noop
+jalr 6 7 // Jump back to where we came from
+start .fill 6
+end .fill 13
+step .fill 1
+zero .fill 0
+val .fill 40
+test_func_addr .fill test_func
